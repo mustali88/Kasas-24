@@ -88,7 +88,59 @@ document.getElementById('lentList').innerHTML=(data.lentDebts||[]).map(d=>{let l
 document.getElementById('recent').innerHTML=data.payments.slice(0,4).map(p=>`<div class="row"><span>${esc(p.name)}</span><b class="green">${money(p.amount)}</b></div>`).join('')||'<div class="empty">Henüz ödeme kaydı yok.</div>';
 let upcoming=data.reminders.filter(r=>!r.done).sort((a,b)=>a.when.localeCompare(b.when));document.getElementById('upcoming').innerHTML=upcoming.map(r=>`<div class="row"><span>${esc(r.name)}<div class="muted">${esc(r.when.replace('T',' '))}</div></span><span class="pill">Bekliyor</span></div>`).join('')||'<div class="empty">Yaklaşan hatırlatma yok.</div>'}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function calculateValues(){let amount=Number(document.getElementById('calcAmount').value),asset=document.getElementById('calcAsset').value,side=document.getElementById('calcSide').value;if(amount<=0)return alert('Geçerli bir TL tutarı gir.');let box=document.getElementById('calcResults');box.innerHTML='<div class="muted">Güncel referans fiyatı alınıyor…</div>';try{let fx=await fetch('https://api.frankfurter.app/latest?from=TRY&to=USD,EUR').then(r=>{if(!r.ok)throw Error();return r.json()});let value,label,unit;if(asset==='USD'){value=amount*fx.rates.USD;label='Dolar';unit='USD'}else if(asset==='EUR'){value=amount*fx.rates.EUR;label='Euro';unit='EUR'}else{let gold=await fetch('https://api.gold-api.com/price/XAU').then(r=>{if(!r.ok)throw Error();return r.json()});let usdTry=1/fx.rates.USD;value=amount/usdTry/(Number(gold.price)/31.1034768);label='Gram altın';unit='g'}let sideText=side==='buy'?'Alış':'Satış';box.innerHTML=`<div class="card"><div class="label">${label} · ${sideText} seçimi</div><div class="value gold">${value.toLocaleString('tr-TR',{maximumFractionDigits:asset==='GOLD'?3:2})} ${unit}</div><p class="muted">Kaynak servis alış/satış makası sağlamıyor; gösterilen değer referans/orta kurdur. Banka veya kuyumcu alış-satış fiyatı değildir.</p></div><div class="card"><div class="label">Veri tarihi</div><div class="value" style="font-size:14px">${esc(fx.date||'Tarih bilgisi yok')}</div><p class="muted">İstek zamanı: ${new Date().toLocaleString('tr-TR')}</p></div>`}catch(e){box.innerHTML='<div class="notice">Canlı fiyat verisi alınamadı. Tahmini değer gösterilmedi.</div>'}}
+async function calculateValues(){
+  const amount=Number(document.getElementById('calcAmount').value);
+  const asset=document.getElementById('calcAsset').value;
+  const side=document.getElementById('calcSide').value;
+  const box=document.getElementById('calcResults');
+  if(!Number.isFinite(amount)||amount<=0){alert('Geçerli bir TL tutarı gir.');return;}
+  box.innerHTML='<div class="muted">Güncel fiyatlar alınıyor…</div>';
+
+  async function getJson(url){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),12000);
+    try{
+      const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      return await response.json();
+    }finally{clearTimeout(timer);}
+  }
+  async function getTryRates(){
+    try{
+      const data=await getJson('https://api.frankfurter.app/latest?from=TRY&to=USD,EUR');
+      if(data.rates&&Number(data.rates.USD)>0&&Number(data.rates.EUR)>0)
+        return {usd:Number(data.rates.USD),eur:Number(data.rates.EUR),date:data.date||'Kaynak tarih vermedi',source:'Frankfurter'};
+    }catch(e){}
+    const data=await getJson('https://open.er-api.com/v6/latest/TRY');
+    if(data.result!=='success'||!data.rates||!(Number(data.rates.USD)>0)||!(Number(data.rates.EUR)>0))
+      throw new Error('Döviz servisi geçerli veri döndürmedi.');
+    return {usd:Number(data.rates.USD),eur:Number(data.rates.EUR),date:data.time_last_update_utc||'Kaynak tarih vermedi',source:'ExchangeRate-API'};
+  }
+
+  try{
+    const fx=await getTryRates();
+    let value,label,unit,priceDate=fx.date,source=fx.source;
+    if(asset==='USD'){
+      value=amount*fx.usd;label='Dolar';unit='USD';
+    }else if(asset==='EUR'){
+      value=amount*fx.eur;label='Euro';unit='EUR';
+    }else{
+      const gold=await getJson('https://api.gold-api.com/price/XAU');
+      const ounceUsd=Number(gold.price);
+      if(!(ounceUsd>0))throw new Error('Altın servisi geçerli fiyat döndürmedi.');
+      const usdTry=1/fx.usd;
+      value=(amount/usdTry)/(ounceUsd/31.1034768);
+      label='Gram altın';unit='gram';
+      priceDate=gold.updatedAt||gold.timestamp||fx.date;
+      source+=' + Gold-API';
+    }
+    if(!Number.isFinite(value)||value<=0)throw new Error('Hesaplama sonucu geçersiz.');
+    const sideText=side==='buy'?'Alış':'Satış';
+    box.innerHTML=`<div class="card"><div class="label">${label} · ${sideText} seçimi</div><div class="value gold">${value.toLocaleString('tr-TR',{maximumFractionDigits:asset==='GOLD'?3:2})} ${unit}</div><p class="muted">Bu kaynaklar piyasa referans/orta fiyatı sağlar; banka veya kuyumcuya özel alış-satış makası sağlamaz. Bu nedenle alış/satış tercihi seçimini gösterir, fiyatı değiştirmez.</p></div><div class="card"><div class="label">Veri bilgisi</div><div class="value" style="font-size:14px">${esc(String(priceDate))}</div><p class="muted">Kaynak: ${esc(source)} · Sorgu zamanı: ${new Date().toLocaleString('tr-TR')}</p></div>`;
+  }catch(e){
+    box.innerHTML='<div class="notice">Canlı fiyat verisi alınamadı. İnternet bağlantısını kontrol edip tekrar dene. Tahmini değer gösterilmedi.</div>';
+  }
+}
 
 document.getElementById('paymentDate').value=new Date().toISOString().slice(0,10);
 render();checkReminders();setInterval(checkReminders,30000);
