@@ -9,13 +9,9 @@
 :root{--bg:#080d16;--panel:#111a28;--panel2:#172235;--gold:#d8b66b;--gold2:#f1d99c;--muted:#93a0b2;--red:#e46b70;--green:#70c69a;--line:#29364a;--white:#f4f1e9}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#17253a 0,#080d16 55%);color:var(--white);font:15px system-ui,-apple-system,Segoe UI,sans-serif;padding-bottom:90px}
 header{padding:20px 16px 14px;background:linear-gradient(130deg,#101b2b,#080d16 65%);border-bottom:1px solid #9d8146}
-.hero{height:142px;border-radius:18px;overflow:hidden;position:relative;background:linear-gradient(110deg,#0b1422,#29384a 52%,#8b6540);margin-bottom:14px}
-.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#080d16 0%,transparent 70%),radial-gradient(ellipse at 70% 20%,#e8b66b66,transparent 40%)}
-.road{position:absolute;bottom:0;left:0;right:0;height:48px;background:linear-gradient(170deg,transparent 45%,#10151d 46%);opacity:.9}
-.van{position:absolute;right:20px;bottom:24px;width:170px;height:62px;background:linear-gradient(155deg,#343b44,#080a0e 65%);border:1px solid #8d9299;border-radius:17px 22px 8px 8px;box-shadow:0 9px 20px #000a}
-.van:before{content:"";position:absolute;right:13px;top:8px;width:63px;height:26px;background:linear-gradient(135deg,#5b7182,#101722);border:1px solid #9aa5aa;border-radius:7px 12px 2px 2px}
-.van:after{content:"";position:absolute;left:9px;bottom:-6px;width:27px;height:15px;border-radius:50%;background:#050608;border:3px solid #59616a;box-shadow:113px 0 #050608}
-.brand{position:relative;z-index:1;padding:20px 18px}.brand h1{margin:0;color:var(--gold2);letter-spacing:4px;font-size:28px;text-shadow:0 2px 12px #000}.brand p{margin:7px 0 0;max-width:70%;font-size:13px;line-height:1.5;color:#f7e9c8}
+.hero{height:210px;border-radius:20px;overflow:hidden;position:relative;background:#080d16 url("hero-sprinter.jpg") center 54%/cover no-repeat;margin-bottom:14px;border:1px solid #8e7445;box-shadow:0 12px 30px #0008}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#070c16ed 0%,#070c16b8 42%,#070c1630 78%),linear-gradient(0deg,#080d16aa,transparent 58%)}
+.brand{position:relative;z-index:1;padding:22px 20px;max-width:70%}.brand h1{margin:0;color:var(--gold2);letter-spacing:4px;font-size:31px;text-shadow:0 2px 14px #000,0 0 18px #d8b66b55}.brand p{margin:9px 0 0;max-width:100%;font-size:14px;line-height:1.55;color:#fff0cb;text-shadow:0 2px 8px #000;font-weight:600}
 .header-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}.smallbtn,.navbtn,.btn{border:1px solid #806b43;background:linear-gradient(145deg,#1b2638,#101725);color:var(--gold2);border-radius:12px;padding:10px 12px;font-weight:650}
 nav{display:flex;gap:8px;overflow:auto;padding:12px 14px;position:sticky;top:0;z-index:5;background:#080d16ed;backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .navbtn{white-space:nowrap;font-size:13px;padding:9px 12px}.navbtn.active,.btn.primary{background:linear-gradient(135deg,#e7ca83,#a98239);color:#10131a;border-color:#f2dca7}
@@ -31,11 +27,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .empty{padding:18px;text-align:center;color:var(--muted)}.pill{font-size:11px;border:1px solid #58657a;border-radius:30px;padding:4px 8px;color:#c3cddd}
 footer{position:fixed;bottom:0;left:0;right:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#080d16f2;border-top:1px solid var(--line);display:flex;justify-content:center;z-index:6}
 footer span{font-size:11px;color:var(--muted)}
-@media(min-width:650px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hero{height:175px}.brand h1{font-size:34px}}
+@media(min-width:650px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hero{height:230px}.brand h1{font-size:36px}}
 </style></head>
 <body>
 <header>
- <div class="hero"><div class="road"></div><div class="van"></div><div class="brand"><h1>KASAS 24</h1><p>“Rabbim! Bana indireceğin her hayra muhtacım.”</p></div></div>
+ <div class="hero"><div class="brand"><h1>KASAS 24</h1><p>“Rabbim! Bana indireceğin her hayra muhtacım.”</p></div></div>
  <div class="header-actions"><button class="smallbtn" onclick="exportData()">Yedek indir</button><button class="smallbtn" onclick="document.getElementById('restoreFile').click()">Yedek yükle</button><button class="smallbtn" onclick="show('settings')">Ayarlar</button><input id="restoreFile" type="file" accept="application/json" hidden onchange="importData(event)"></div>
 </header>
 <nav id="nav">
