@@ -95,7 +95,6 @@ async function calculateValues(){
   const box=document.getElementById('calcResults');
   if(!Number.isFinite(amount)||amount<=0){alert('Geçerli bir TL tutarı gir.');return;}
   box.innerHTML='<div class="muted">Güncel fiyatlar alınıyor…</div>';
-
   async function getJson(url){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),12000);
@@ -105,38 +104,28 @@ async function calculateValues(){
       return await response.json();
     }finally{clearTimeout(timer);}
   }
-  async function getTryRates(){
-    try{
-      const data=await getJson('https://api.frankfurter.app/latest?from=TRY&to=USD,EUR');
-      if(data.rates&&Number(data.rates.USD)>0&&Number(data.rates.EUR)>0)
-        return {usd:Number(data.rates.USD),eur:Number(data.rates.EUR),date:data.date||'Kaynak tarih vermedi',source:'Frankfurter'};
-    }catch(e){}
-    const data=await getJson('https://open.er-api.com/v6/latest/TRY');
-    if(data.result!=='success'||!data.rates||!(Number(data.rates.USD)>0)||!(Number(data.rates.EUR)>0))
-      throw new Error('Döviz servisi geçerli veri döndürmedi.');
-    return {usd:Number(data.rates.USD),eur:Number(data.rates.EUR),date:data.time_last_update_utc||'Kaynak tarih vermedi',source:'ExchangeRate-API'};
-  }
-
   try{
-    const fx=await getTryRates();
-    let value,label,unit,priceDate=fx.date,source=fx.source;
-    if(asset==='USD'){
-      value=amount*fx.usd;label='Dolar';unit='USD';
-    }else if(asset==='EUR'){
-      value=amount*fx.eur;label='Euro';unit='EUR';
-    }else{
+    const [usdData,eurData]=await Promise.all([
+      getJson('https://api.frankfurter.dev/v2/rate/try/usd'),
+      getJson('https://api.frankfurter.dev/v2/rate/try/eur')
+    ]);
+    const usd=Number(usdData.rate),eur=Number(eurData.rate);
+    if(!(usd>0)||!(eur>0))throw new Error('Döviz verisi geçersiz.');
+    let value,label,unit,priceDate=usdData.date,source='Frankfurter v2';
+    if(asset==='USD'){value=amount*usd;label='Dolar';unit='USD';}
+    else if(asset==='EUR'){value=amount*eur;label='Euro';unit='EUR';}
+    else{
       const gold=await getJson('https://api.gold-api.com/price/XAU');
       const ounceUsd=Number(gold.price);
-      if(!(ounceUsd>0))throw new Error('Altın servisi geçerli fiyat döndürmedi.');
-      const usdTry=1/fx.usd;
-      value=(amount/usdTry)/(ounceUsd/31.1034768);
+      if(!(ounceUsd>0))throw new Error('Altın verisi geçersiz.');
+      value=(amount/(1/usd))/(ounceUsd/31.1034768);
       label='Gram altın';unit='gram';
-      priceDate=gold.updatedAt||gold.timestamp||fx.date;
+      priceDate=gold.updatedAt||gold.timestamp||usdData.date;
       source+=' + Gold-API';
     }
-    if(!Number.isFinite(value)||value<=0)throw new Error('Hesaplama sonucu geçersiz.');
+    if(!Number.isFinite(value)||value<=0)throw new Error('Sonuç geçersiz.');
     const sideText=side==='buy'?'Alış':'Satış';
-    box.innerHTML=`<div class="card"><div class="label">${label} · ${sideText} seçimi</div><div class="value gold">${value.toLocaleString('tr-TR',{maximumFractionDigits:asset==='GOLD'?3:2})} ${unit}</div><p class="muted">Bu kaynaklar piyasa referans/orta fiyatı sağlar; banka veya kuyumcuya özel alış-satış makası sağlamaz. Bu nedenle alış/satış tercihi seçimini gösterir, fiyatı değiştirmez.</p></div><div class="card"><div class="label">Veri bilgisi</div><div class="value" style="font-size:14px">${esc(String(priceDate))}</div><p class="muted">Kaynak: ${esc(source)} · Sorgu zamanı: ${new Date().toLocaleString('tr-TR')}</p></div>`;
+    box.innerHTML=`<div class="card"><div class="label">${label} · ${sideText} tercihi</div><div class="value gold">${value.toLocaleString('tr-TR',{maximumFractionDigits:asset==='GOLD'?3:2})} ${unit}</div><p class="muted">Bu servisler referans/orta fiyat verir; banka veya döviz bürosunun gerçek alış-satış makasını vermez. Alış/satış tercihi burada etiketlenir, sonucu değiştirmez.</p></div><div class="card"><div class="label">Veri tarihi</div><div class="value" style="font-size:14px">${esc(String(priceDate))}</div><p class="muted">Kaynak: ${esc(source)} · Sorgu zamanı: ${new Date().toLocaleString('tr-TR')}</p></div>`;
   }catch(e){
     box.innerHTML='<div class="notice">Canlı fiyat verisi alınamadı. İnternet bağlantısını kontrol edip tekrar dene. Tahmini değer gösterilmedi.</div>';
   }
